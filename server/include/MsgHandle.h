@@ -6,6 +6,7 @@
 #include <map>
 #include <thread>
 #include <mutex>
+#include <memory>
 
 typedef enum
 {
