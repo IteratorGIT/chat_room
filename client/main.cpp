@@ -113,7 +113,7 @@ int main(int argc ,char**argv)
     int sockfd;
     int optch,ret = -1;
     const char*server_addr;
-    int default_port = 8000;
+    int default_port = 8888;
 
     struct sockaddr_in servaddr;
     /*判断是否为合法输入 必须传入一个参数：服务器Ip*/
