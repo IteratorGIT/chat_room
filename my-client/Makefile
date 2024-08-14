@@ -1,7 +1,6 @@
-TARGET=server
-SRC = $(wildcard $(shell pwd)/public/src/*.cpp $(shell pwd)/src/*.cpp)
+TARGET=client
+SRC = $(wildcard $(shell pwd)/*.cpp $(shell pwd)/src/*.cpp $(shell pwd)/utils/*.cpp)
 OBJ = $(patsubst %.cpp *.c,%.o,$(SRC))
-DEFS =
 CFLAGS = -g -I $(shell pwd)/public/include -I $(shell pwd)/include # -fsanitize=address
 CC =g++
 LIBS =  -lpthread

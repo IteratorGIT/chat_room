@@ -1,2 +1,4 @@
-server
-client
+server/server
+client/client
+my-server/server
+my-client/client
