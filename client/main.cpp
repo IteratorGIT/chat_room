@@ -119,7 +119,7 @@ int main(int argc ,char**argv)
     /*判断是否为合法输入 必须传入一个参数：服务器Ip*/
     if(argc<3)
     {
-        printf("user default addr:0.0.0.0 and port 8000\n");
+        printf("user default addr:0.0.0.0 and port 8888\n");
         server_addr = "0.0.0.0";
     }
     while((optch = getopt(argc, argv, "s:p:")) != -1)
