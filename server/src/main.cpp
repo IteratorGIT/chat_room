@@ -9,7 +9,7 @@ int handleFdReadable(SocketHandle fd);
 
 int main(int argc, char *argv[])
 {
-    int default_port = 8000;
+    int default_port = 8888;
     int optch = 0;
     while ((optch = getopt(argc, argv, "s:p:")) != -1)
     {
