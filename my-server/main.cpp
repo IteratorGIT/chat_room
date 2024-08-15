@@ -124,7 +124,7 @@ int main(int argc, char *argv[]){
                 memset(welcome, 0, sizeof(welcome));
                 snprintf(welcome, 100, "%s 进入聊天室.\n", username.c_str());
                 std::string massage(welcome);
-                sess->broadcastMsg(massage);
+                sess->broadcastMsg(welcome, strlen(welcome));
                 // for(auto it = mp_users.begin(); it != mp_users.end(); ++it){
                 //     int fd = it->first;
                 //     if(fd != connfd){

@@ -3,8 +3,12 @@
 
 #include "database.h"
 #include "common.h"
+
+#include <string.h>
+#include <unistd.h>
 #include <string>
 #include <unordered_map>
+#include <memory>
 
 struct User{
 public:
@@ -31,12 +35,7 @@ struct MessageInfo{
 
     MessageInfo():header(nullptr), data(nullptr){}
     ~MessageInfo(){
-        if(header!=nullptr){
-            delete header;
-        }
-        if(data!=nullptr){
-            delete data;
-        }
+
     }
 
     bool check(){//暂时只检查魔术数
@@ -57,7 +56,7 @@ enum{
 };
 
 
-
+class SessionMng;
 //存储一个连接的所有数据
 //处理一个连接所有可能发生的操作
 class Session{
@@ -149,10 +148,7 @@ private:
     SessionMng(){}
     ~SessionMng(){}
 public:
-    static std::shared_ptr<SessionMng> getInstance(){
-        static std::shared_ptr<SessionMng> m_session_mng = std::make_shared<SessionMng>();
-        return m_session_mng;
-    }
+    static SessionMng* getInstance();
 
     bool addSession(int fd, std::shared_ptr<Session> sess){
         if(m_session_mp.find(fd) != m_session_mp.end()){
@@ -193,5 +189,10 @@ public:
 private:
     std::unordered_map<int, std::shared_ptr<Session>> m_session_mp;
 };
+
+SessionMng* SessionMng::getInstance(){
+    static SessionMng m_session_mng;
+    return &m_session_mng;
+}
 
 #endif
