@@ -105,65 +105,76 @@ int main(int argc, char *argv[]){
                 int connfd = accept( listen_fd, ( struct sockaddr* )&client_addr, &client_addr_len );
                 addfd(epfd, connfd);
 
+                std::shared_ptr<Session> sess = std::make_shared<Session>(connfd);
+                SessionMng::getInstance()->addSession(connfd, sess);
 
+                
                 //记录用户信息
                 std::string username = "游客";
                 username += std::to_string(connfd);
-                mp_users[connfd] = std::make_shared<User>(username,connfd);
+                sess->setUser(username);
+                
                 //加入epoll
                 addfd(epfd, connfd);
                 printf("new client: %d\n", connfd);
 
                 //进入聊天室欢迎语
+
                 char welcome[100];
                 memset(welcome, 0, sizeof(welcome));
                 snprintf(welcome, 100, "%s 进入聊天室.\n", username.c_str());
-                for(auto it = mp_users.begin(); it != mp_users.end(); ++it){
-                    int fd = it->first;
-                    if(fd != connfd){
-                        send(fd, welcome, strlen(welcome), 0);    
-                    }
-                }
+                std::string massage(welcome);
+                sess->broadcastMsg(massage);
+                // for(auto it = mp_users.begin(); it != mp_users.end(); ++it){
+                //     int fd = it->first;
+                //     if(fd != connfd){
+                //         send(fd, welcome, strlen(welcome), 0);    
+                //     }
+                // }
 
             }else if(events[i].events & EPOLLIN){
                 //普通数据
                 //读取数据，并进行处理
                 int connfd = events[i].data.fd;
-                char msg[MAX_MSG_SIZE];
-                memset(msg,0,MAX_MSG_SIZE);
-                ret = recv(connfd, msg, MAX_MSG_SIZE-1, 0);
-                if(ret < 0){
-                    printf("接受数据错误\n");
-                    continue;
-                }else if(ret == 0){
 
-                    char leave[100];
-                    memset(leave, 0, sizeof(leave));
-                    snprintf(leave, 100, "%s 离开聊天室.\n", mp_users[connfd]->username.c_str());
-                    for(auto it = mp_users.begin(); it != mp_users.end(); ++it){
-                        int fd = it->first;
-                        if(fd != connfd){
-                            send(fd, leave, strlen(leave), 0);    
-                        }
-                    }
-                    //关闭连接
-                    close(connfd);
-                    //删除用户数据
-                    mp_users.erase(connfd);
-                    printf("%d closed, %d alive\n", connfd, (int)mp_users.size());
-                }else{
-                    //将消息广播
-                    char buf[BUF_SIZE];
-                    memset(buf, 0, BUF_SIZE);
-                    auto pUser = mp_users[connfd];
-                    snprintf(buf, BUF_SIZE-1, ">> %s: %s", pUser->username.c_str(), msg);
-                    for(auto it = mp_users.begin(); it != mp_users.end(); ++it){
-                        int fd = it->first;
-                        if(fd != connfd){
-                            send(fd, buf, strlen(buf), 0);    
-                        }
-                    }
-                }
+                SessionMng::getInstance()->handleSession(connfd);
+
+
+                // char msg[MAX_MSG_SIZE];
+                // memset(msg,0,MAX_MSG_SIZE);
+                // ret = recv(connfd, msg, MAX_MSG_SIZE-1, 0);
+                // if(ret < 0){
+                //     printf("接受数据错误\n");
+                //     continue;
+                // }else if(ret == 0){
+
+                //     char leave[100];
+                //     memset(leave, 0, sizeof(leave));
+                //     snprintf(leave, 100, "%s 离开聊天室.\n", mp_users[connfd]->username.c_str());
+                //     for(auto it = mp_users.begin(); it != mp_users.end(); ++it){
+                //         int fd = it->first;
+                //         if(fd != connfd){
+                //             send(fd, leave, strlen(leave), 0);    
+                //         }
+                //     }
+                //     //关闭连接
+                //     close(connfd);
+                //     //删除用户数据
+                //     mp_users.erase(connfd);
+                //     printf("%d closed, %d alive\n", connfd, (int)mp_users.size());
+                // }else{
+                //     //将消息广播
+                //     char buf[BUF_SIZE];
+                //     memset(buf, 0, BUF_SIZE);
+                //     auto pUser = mp_users[connfd];
+                //     snprintf(buf, BUF_SIZE-1, ">> %s: %s", pUser->username.c_str(), msg);
+                //     for(auto it = mp_users.begin(); it != mp_users.end(); ++it){
+                //         int fd = it->first;
+                //         if(fd != connfd){
+                //             send(fd, buf, strlen(buf), 0);    
+                //         }
+                //     }
+                // }
             }
         }
 
