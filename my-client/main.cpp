@@ -24,7 +24,7 @@ int setnonblocking( int fd )
     return old_option;
 }
 
-void addfd( int epollfd, int fd, bool enable_et )
+void addfd( int epollfd, int fd, bool enable_et = true)
 {
     epoll_event event;
     event.data.fd = fd;
@@ -66,8 +66,8 @@ int main(int argc, char *argv[]){
         perror("epoll create error:");
         return 0;
     }
-    addfd(epfd, sock, true);
-    addfd(epfd, STDIN_FILENO, true);
+    addfd(epfd, sock);
+    addfd(epfd, STDIN_FILENO);
     epoll_event events[MAX_EVENTS_NUM];
 
     int pipe_fd[2];
@@ -88,11 +88,22 @@ int main(int argc, char *argv[]){
             if(fd == STDIN_FILENO){
                 //标准输入
                 //splice零拷贝方式
-                ret = splice(STDIN_FILENO, NULL, pipe_fd[1], NULL, 10000, SPLICE_F_MORE | SPLICE_F_MOVE);
+                // ret = splice(STDIN_FILENO, NULL, pipe_fd[1], NULL, 10000, SPLICE_F_MORE | SPLICE_F_MOVE);
+                // if(ret < 0){
+                //     printf("write to pipe failed.\n");
+                // }
+                // ret = splice(pipe_fd[0], NULL, sock, NULL, 10000, SPLICE_F_MORE | SPLICE_F_MOVE);
+                // if(ret < 0){
+                //     printf("write to sock failed.\n");
+                // }
+                char msg[MAX_MSG_SIZE];
+                memset(msg, 0, MAX_MSG_SIZE);
+                ret = read(STDIN_FILENO, msg, MAX_MSG_SIZE-1);
                 if(ret < 0){
-                    printf("write to pipe failed.\n");
+                    //因为是非阻塞的，可能多次到达
+                    // printf("read from stdin failed.\n");
                 }
-                ret = splice(pipe_fd[0], NULL, sock, NULL, 10000, SPLICE_F_MORE | SPLICE_F_MOVE);
+                ret = write(sock, msg, strlen(msg));
                 if(ret < 0){
                     printf("write to sock failed.\n");
                 }
