@@ -18,6 +18,9 @@ public:
     ~User(){}
 };
 
+using UserMap = std::unordered_map<int, User>;
+std::shared_ptr<UserMap> g_users = std::make_shared<UserMap>();
+
 const unsigned int MAGIC = 0x12345678;
 
 struct MessageHeader{
@@ -95,13 +98,9 @@ public:
         return ret;
     }
 
-    void broadcastMsg(const char *buf, int len){//广播
-        auto instance = SessionMng::getInstance();
-        for(auto iter = instance->begin(); iter != instance->end();++iter){
-            if(iter->first != m_socket){
-                sendMsg(CODE_BROADCAST, buf, len);
-            }
-        }
+    RET_CODE broadcastMsg(const char *buf, int len){//广播
+        //添加用户信息
+        return sendToSquare(buf, len);
     }
 
 private:
@@ -139,6 +138,8 @@ private:
     RET_CODE readMsg(char * buf, int buf_len);
 
     void sendMsg(int code, const char* data, int len);
+
+    RET_CODE sendToSquare(const char *buf, int len);
     
 };
 
