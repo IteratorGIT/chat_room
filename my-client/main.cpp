@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <memory>
 
-// #include "common.h"
+#include "session.h"
 
 #define MAX_EVENTS_NUM 2
 #define MAX_MSG_SIZE 512
@@ -39,7 +39,8 @@ void addfd( int epollfd, int fd, bool enable_et = true)
 
 
 int main(int argc, char *argv[]){
-    std::string ip = "127.0.0.1";
+    // std::string ip = "127.0.0.1";
+    std::string ip = "192.168.28.131";
     int port = 8888;
     if(argc >= 3){
         ip = std::string(argv[1]);
@@ -66,14 +67,16 @@ int main(int argc, char *argv[]){
         perror("epoll create error:");
         return 0;
     }
+
+    Session sess(sock);
+    sess.showMainMenu();
+
     addfd(epfd, sock);
     addfd(epfd, STDIN_FILENO);
     epoll_event events[MAX_EVENTS_NUM];
 
     int pipe_fd[2];
     pipe(pipe_fd);
-
-    printf("进入聊天室.\n");
 
     //事件循环
     bool stop = false;
@@ -86,42 +89,12 @@ int main(int argc, char *argv[]){
         for(int i=0;i<ret;i++){
             int fd = events[i].data.fd;
             if(fd == STDIN_FILENO){
-                //标准输入
-                //splice零拷贝方式
-                // ret = splice(STDIN_FILENO, NULL, pipe_fd[1], NULL, 10000, SPLICE_F_MORE | SPLICE_F_MOVE);
-                // if(ret < 0){
-                //     printf("write to pipe failed.\n");
-                // }
-                // ret = splice(pipe_fd[0], NULL, sock, NULL, 10000, SPLICE_F_MORE | SPLICE_F_MOVE);
-                // if(ret < 0){
-                //     printf("write to sock failed.\n");
-                // }
-                char msg[MAX_MSG_SIZE];
-                memset(msg, 0, MAX_MSG_SIZE);
-                ret = read(STDIN_FILENO, msg, MAX_MSG_SIZE-1);
-                if(ret < 0){
-                    //因为是非阻塞的，可能多次到达
-                    // printf("read from stdin failed.\n");
-                }
-                ret = write(sock, msg, strlen(msg));
-                if(ret < 0){
-                    printf("write to sock failed.\n");
-                }
+                sess.handleInput();
 
             }else if(fd == sock){
                 //普通数据
                 //来自服务器的广播
-                char buf[BUF_SIZE];
-                memset(buf, 0, BUF_SIZE);
-                int ret = recv(sock, buf, BUF_SIZE-1, 0);
-                if(ret < 0){
-
-                }else if(ret == 0){
-                    stop = true;
-                    break;
-                }else{
-                    printf("%s\n",buf);
-                }
+                sess.handleMsg();
             }
         }
 

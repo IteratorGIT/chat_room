@@ -4,6 +4,8 @@
 #include "database.h"
 #include "common.h"
 
+#include "lock.h"
+
 #include <string.h>
 #include <unistd.h>
 #include <string>
@@ -19,7 +21,9 @@ public:
 };
 
 using UserMap = std::unordered_map<int, User>;
-std::shared_ptr<UserMap> g_users = std::make_shared<UserMap>();
+extern std::shared_ptr<UserMap> g_users;//当前活动用户
+extern Lock g_mtx;
+
 
 const unsigned int MAGIC = 0x12345678;
 
@@ -70,16 +74,25 @@ private:
 public:
     Session(int socket):m_user(nullptr),m_isLogin(false), m_socket(socket){}
     ~Session(){
+        printf("client %d exited.\n", m_socket);
         close(m_socket);
     }
 
     void setUser(std::string username){
+        std::shared_ptr<UserMap> tmp;
+        {
+            tmp = g_users;
+        }
+        tmp->insert(std::pair<int, User>(m_socket, std::move(User(username))));
         m_user = std::make_shared<User>(username);
     }
 
     RET_CODE handleMsg(){
         MessageInfo *pmsg_info = new MessageInfo();
         RET_CODE ret =  readAndParse(pmsg_info);
+        if(ret == RET_EXIT){
+            ret = logout();
+        }
         if(ret != RET_OK){
             return ret;
         }
@@ -99,6 +112,7 @@ public:
     }
 
     RET_CODE broadcastMsg(const char *buf, int len){//广播
+        // printf("broadcasting...\n");
         //添加用户信息
         return sendToSquare(buf, len);
     }
@@ -117,8 +131,9 @@ private:
         return RET_OK;
 
     }
-    int logout(){
-        return 1;
+    RET_CODE logout(){
+        m_isLogin = false;
+        return RET_EXIT;
     }
 
     //广场，是一个大聊天室
@@ -130,6 +145,7 @@ private:
 
         //然后广播
         broadcastMsg(buf, strlen(buf));
+        delete [] buf;
         return RET_OK;
     }
 
@@ -138,8 +154,22 @@ private:
     RET_CODE readMsg(char * buf, int buf_len);
 
     void sendMsg(int code, const char* data, int len);
+    void sendMsg(int fd, int code, const char* data, int len);
 
-    RET_CODE sendToSquare(const char *buf, int len);
+    RET_CODE sendToSquare(const char *buf, int len){
+        std::shared_ptr<UserMap> tmp;
+        {
+            tmp = g_users;
+        }
+        for(auto iter = tmp->begin(); iter != tmp->end(); ++iter){
+            int sock = iter->first;
+            if(sock != m_socket){
+                printf("send to user %s\n", iter->second.username.c_str());
+                sendMsg(sock, CODE_BROADCAST, buf, len);
+            }
+        }
+        return RET_OK;
+    }
     
 };
 
@@ -149,19 +179,32 @@ private:
     SessionMng(){}
     ~SessionMng(){}
 public:
-    static SessionMng* getInstance();
+    static SessionMng* getInstance(){
+        static SessionMng m_session_mng;
+        return &m_session_mng;
+    }
 
     bool addSession(int fd, std::shared_ptr<Session> sess){
         if(m_session_mp.find(fd) != m_session_mp.end()){
             return false;
         }
         m_session_mp[fd] = sess;
+
         return true;
     }
 
     bool delSession(int fd){
         auto iter = m_session_mp.find(fd);
         if(iter != m_session_mp.end()){
+            char goodby[100];
+            memset(goodby, 0, sizeof(goodby));
+            std::shared_ptr<UserMap> tmp;
+            {
+                tmp = g_users;
+            }
+            std::string username = tmp->find(fd)->second.username;
+            snprintf(goodby, 100, "%s 离开聊天室.\n", username.c_str());
+            iter->second->broadcastMsg(goodby, strlen(goodby));
             m_session_mp.erase(iter);
         }
         return true;
@@ -191,9 +234,9 @@ private:
     std::unordered_map<int, std::shared_ptr<Session>> m_session_mp;
 };
 
-SessionMng* SessionMng::getInstance(){
-    static SessionMng m_session_mng;
-    return &m_session_mng;
-}
+// SessionMng* SessionMng::getInstance(){
+//     static SessionMng m_session_mng;
+//     return &m_session_mng;
+// }
 
 #endif

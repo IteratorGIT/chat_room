@@ -41,7 +41,8 @@ void addfd( int epollfd, int fd, bool enable_et = false)
 
 
 int main(int argc, char *argv[]){
-    std::string ip = "0.0.0.0";
+    // std::string ip = "0.0.0.0";
+    std::string ip = "192.168.28.131";
     int port = 8888;
     if(argc >= 3){
         ip = std::string(argv[1]);

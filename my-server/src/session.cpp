@@ -2,6 +2,8 @@
 #include <string.h>
 #include <unistd.h>
 
+std::shared_ptr<UserMap> g_users = std::make_shared<UserMap>();
+Lock g_mtx;
 
 RET_CODE Session::readAndParse(MessageInfo *pmsg_info){
     //1. 头部
@@ -37,10 +39,15 @@ RET_CODE Session::readAndParse(MessageInfo *pmsg_info){
 RET_CODE Session::readMsg(char * buf, int buf_len){
     memset(buf,0, buf_len);
     //循环读取，直到读完
+    //todo:对于可能出现的读不完的情况呢？？？
     int curlen = 0;
     while(curlen < buf_len){
         int len = read(m_socket, buf+curlen, buf_len-curlen);
         if(len < 0){
+            //读完了
+            if(errno == EAGAIN || errno == EWOULDBLOCK){
+                break;
+            }
             return RET_ERROR;
         }else if(len == 0){
             return RET_EXIT;
@@ -54,7 +61,7 @@ RET_CODE Session::readMsg(char * buf, int buf_len){
     return RET_ERROR;
 }
 
-void Session::sendMsg(int code, const char* data, int len){
+void Session::sendMsg(int fd, int code, const char* data, int len){
     char *buf = new char[sizeof(MessageHeader) + len];
 
     MessageHeader * pheader = (MessageHeader*)buf;
@@ -65,7 +72,9 @@ void Session::sendMsg(int code, const char* data, int len){
     if(len > 0){
         memcpy(body, data, len);
     }
-    write(m_socket, buf, sizeof(MessageHeader) + len);
+    write(fd, buf, sizeof(MessageHeader) + len);
     delete buf;
-    
+}
+void Session::sendMsg(int code, const char* data, int len){
+    sendMsg(m_socket, code, data, len);
 }
